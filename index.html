@@ -1,387 +1,463 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual Assistant</title>
-    <style>
-      /* Base Styles */
-.container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    background: linear-gradient(135deg, #1e3c72, #2a5298);
-    font-family: 'Arial', sans-serif;
-}
-
-/* Assistant Avatar - Main Orb */
-.assistant-avatar {
-    position: relative;
-    width: 200px;
-    height: 200px;
-    margin-bottom: 30px;
-}
-
-.orb {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: linear-gradient(45deg, #00d4ff, #0099cc);
-    box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
-    animation: breathe 3s ease-in-out infinite;
-}
-
-/* Breathing Animation (Idle State) */
-@keyframes breathe {
-    0%, 100% {
-        transform: scale(1);
-        opacity: 0.8;
+  <meta charset="UTF-8" />
+  <title>Virtual Assistant (Single File)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Optional: Google Material Icons for the mic icon -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    /* ===== Base Layout ===== */
+    :root{
+      --bg1:#1e3c72;
+      --bg2:#2a5298;
+      --idle1:#00d4ff;
+      --idle2:#0099cc;
+      --listen1:#ff6b6b;
+      --listen2:#ee5a52;
+      --speak1:#4ecdc4;
+      --speak2:#44a08d;
+      --glass:rgba(255,255,255,0.1);
+      --glass-border:rgba(255,255,255,0.2);
+      --text:#ffffff;
     }
-    50% {
-        transform: scale(1.05);
-        opacity: 1;
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(135deg,var(--bg1),var(--bg2));
+      color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI, Roboto, Arial, sans-serif;
     }
-}
-
-/* Listening Animation */
-.orb.listening {
-    animation: pulse 0.8s ease-in-out infinite;
-    background: linear-gradient(45deg, #ff6b6b, #ee5a52);
-    box-shadow: 0 0 50px rgba(255, 107, 107, 0.7);
-}
-
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+    .container{
+      width:min(680px,92vw);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:22px;
     }
-    70% {
-        transform: scale(1.1);
-        box-shadow: 0 0 0 20px rgba(255, 107, 107, 0);
+
+    /* ===== Avatar / Orb ===== */
+    .assistant-avatar{
+      position:relative;
+      width:220px;
+      height:220px;
     }
-    100% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+    .orb{
+      width:100%;
+      height:100%;
+      border-radius:50%;
+      background:linear-gradient(45deg,var(--idle1),var(--idle2));
+      box-shadow:0 0 30px rgba(0,212,255,0.45);
+      animation:breathe 3s ease-in-out infinite;
+      transition:background .3s ease, box-shadow .3s ease, transform .2s ease;
     }
-}
-
-/* Speaking Animation */
-.orb.speaking {
-    animation: speaking 0.5s ease-in-out infinite alternate;
-    background: linear-gradient(45deg, #4ecdc4, #44a08d);
-    box-shadow: 0 0 40px rgba(78, 205, 196, 0.6);
-}
-
-@keyframes speaking {
-    0% {
-        transform: scale(1) rotate(0deg);
-        border-radius: 50% 40% 50% 40%;
+    @keyframes breathe{
+      0%,100%{transform:scale(1); opacity:.92}
+      50%{transform:scale(1.05); opacity:1}
     }
-    100% {
-        transform: scale(1.08) rotate(2deg);
-        border-radius: 40% 50% 40% 50%;
+    /* Listening */
+    .orb.listening{
+      background:linear-gradient(45deg,var(--listen1),var(--listen2));
+      box-shadow:0 0 50px rgba(255,107,107,0.7);
+      animation:pulse .85s ease-in-out infinite;
     }
-}
-
-/* Voice Visualizer Bars */
-.voice-visualizer {
-    position: absolute;
-    bottom: -40px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: flex-end;
-    height: 30px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.voice-visualizer.active {
-    opacity: 1;
-}
-
-.visualizer-bar {
-    width: 4px;
-    background: linear-gradient(to top, #00d4ff, #0099cc);
-    margin: 0 1px;
-    border-radius: 2px;
-    animation: visualize 0.3s ease-in-out infinite alternate;
-}
-
-@keyframes visualize {
-    0% { height: 5px; }
-    100% { height: 25px; }
-}
-
-/* Microphone Button */
-.mic-button {
-    width: 80px;
-    height: 80px;
-    border: none;
-    border-radius: 50%;
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    color: white;
-    font-size: 24px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    margin-bottom: 20px;
-}
-
-.mic-button:hover {
-    transform: scale(1.1);
-    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-}
-
-.mic-button.recording {
-    animation: recordPulse 1s ease-in-out infinite;
-    background: linear-gradient(45deg, #ff6b6b, #ee5a52);
-}
-
-@keyframes recordPulse {
-    0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+    @keyframes pulse{
+      0%{transform:scale(1); box-shadow:0 0 0 0 rgba(255,107,107,0.6)}
+      70%{transform:scale(1.08); box-shadow:0 0 0 18px rgba(255,107,107,0)}
+      100%{transform:scale(1); box-shadow:0 0 0 0 rgba(255,107,107,0)}
     }
-    50% {
-        transform: scale(1.05);
-        box-shadow: 0 0 0 15px rgba(255, 107, 107, 0);
+    /* Speaking */
+    .orb.speaking{
+      background:linear-gradient(45deg,var(--speak1),var(--speak2));
+      box-shadow:0 0 42px rgba(78,205,196,0.65);
+      animation:speakMorph .5s ease-in-out infinite alternate;
     }
-}
+    @keyframes speakMorph{
+      0%{transform:scale(1) rotate(0deg); border-radius:50% 44% 50% 44%}
+      100%{transform:scale(1.08) rotate(2deg); border-radius:44% 50% 44% 50%}
+    }
 
-/* Output Area */
-.output-area {
-    width: 400px;
-    min-height: 100px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 20px;
-    color: white;
-    text-align: center;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
+    /* ===== Voice Visualizer Bars ===== */
+    .voice-visualizer{
+      position:absolute;
+      bottom:-42px;
+      left:50%;
+      transform:translateX(-50%);
+      display:flex;
+      align-items:flex-end;
+      height:30px;
+      opacity:0;
+      transition:opacity .25s ease;
+      pointer-events:none;
+    }
+    .voice-visualizer.active{ opacity:1 }
+    .visualizer-bar{
+      width:4px;
+      background:linear-gradient(to top,var(--idle1),var(--idle2));
+      margin:0 1.5px;
+      border-radius:3px;
+      height:8px;
+      animation:barWave .35s ease-in-out infinite alternate;
+    }
+    @keyframes barWave{
+      0%{height:6px}
+      100%{height:26px}
+    }
 
-    </style>
+    /* ===== Controls ===== */
+    .controls{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+    .mic-button{
+      width:86px;
+      height:86px;
+      border:none;
+      border-radius:50%;
+      background:linear-gradient(45deg,#667eea,#764ba2);
+      color:#fff;
+      font-size:28px;
+      cursor:pointer;
+      transition:transform .2s ease, box-shadow .2s ease, filter .2s ease;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      outline:none;
+    }
+    .mic-button:hover{
+      transform:scale(1.06);
+      box-shadow:0 6px 22px rgba(102,126,234,.45);
+      filter:saturate(1.05);
+    }
+    .mic-button.recording{
+      animation:recordPulse 1s ease-in-out infinite;
+      background:linear-gradient(45deg,var(--listen1),var(--listen2));
+    }
+    @keyframes recordPulse{
+      0%,100%{transform:scale(1); box-shadow:0 0 0 0 rgba(255,107,107,.55)}
+      50%{transform:scale(1.05); box-shadow:0 0 0 16px rgba(255,107,107,0)}
+    }
+
+    .status{
+      padding:10px 14px;
+      background:var(--glass);
+      border:1px solid var(--glass-border);
+      border-radius:12px;
+      backdrop-filter:blur(10px);
+      font-size:14px;
+      min-width:140px;
+      text-align:center;
+    }
+
+    /* ===== Output ===== */
+    .output{
+      width:100%;
+      min-height:110px;
+      background:var(--glass);
+      border:1px solid var(--glass-border);
+      border-radius:16px;
+      padding:18px 16px;
+      backdrop-filter:blur(10px);
+      line-height:1.5;
+    }
+    .line{
+      margin:.25rem 0;
+      opacity:.95;
+    }
+    .label{
+      font-weight:600;
+      opacity:.9;
+    }
+    .interim{
+      opacity:.7;
+      font-style:italic;
+    }
+
+    /* ===== Footer / Tips ===== */
+    .tips{
+      font-size:12px;
+      opacity:.85;
+      text-align:center;
+      max-width:560px;
+    }
+
+    /* Small screens */
+    @media (max-width:420px){
+      .assistant-avatar{ width:180px; height:180px }
+      .mic-button{ width:76px; height:76px; font-size:24px }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="assistant-avatar">
-            <div class="orb" id="mainOrb"></div>
-            <div class="voice-visualizer" id="visualizer"></div>
-        </div>
-        <button id="micButton" class="mic-button">
-            <i class="fas fa-microphone"></i>
-        </button>
-        <div id="output" class="output-area"></div>
+  <div class="container">
+    <!-- Avatar + Visuals -->
+    <div class="assistant-avatar">
+      <div class="orb" id="orb"></div>
+      <div class="voice-visualizer" id="visualizer"></div>
     </div>
-    <script>
-      class VirtualAssistant {
-    constructor() {
-        this.orb = document.getElementById('mainOrb');
-        this.micButton = document.getElementById('micButton');
-        this.output = document.getElementById('output');
-        this.visualizer = document.getElementById('visualizer');
-        
+
+    <!-- Controls -->
+    <div class="controls">
+      <button id="micBtn" class="mic-button" title="Start/Stop listening">
+        <span class="material-icons">mic</span>
+      </button>
+      <div class="status" id="status">Idle</div>
+    </div>
+
+    <!-- Output -->
+    <div class="output" id="output">
+      <div class="line"><span class="label">Assistant:</span> Hello! Click the microphone to talk.</div>
+    </div>
+
+    <div class="tips">
+    </div>
+  </div>
+
+  <script>
+    // ============== Utilities ==============
+    const $ = (sel) => document.querySelector(sel);
+
+    // ============== Visualizer Setup ==============
+    function createBars(container, count=22){
+      container.innerHTML = '';
+      for(let i=0;i<count;i++){
+        const bar = document.createElement('div');
+        bar.className = 'visualizer-bar';
+        bar.style.animationDelay = `${(i*0.05).toFixed(2)}s`;
+        bar.style.height = `${Math.random()*18+6}px`;
+        container.appendChild(bar);
+      }
+    }
+
+    // ============== Assistant Logic ==============
+    class VirtualAssistant {
+      constructor(){
+        this.orb = $('#orb');
+        this.micBtn = $('#micBtn');
+        this.statusEl = $('#status');
+        this.outputEl = $('#output');
+        this.visualizer = $('#visualizer');
+
         this.isListening = false;
         this.isSpeaking = false;
-        
+
         this.recognition = null;
-        this.synthesis = window.speechSynthesis;
-        
-        this.init();
-    }
-    
-    init() {
-        // Check for Web Speech API support
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            this.setupSpeechRecognition();
-        } else {
-            this.output.textContent = 'Speech recognition not supported in this browser.';
-            return;
-        }
-        
-        // Setup microphone button
-        this.micButton.addEventListener('click', () => this.toggleListening());
-        
-        // Create voice visualizer bars
-        this.createVisualizerBars();
-        
-        // Initial greeting
+        this.synth = window.speechSynthesis;
+
+        this._bind();
+        this._initSpeech();
+        createBars(this.visualizer, 22);
+
+        // Optional greeting
         setTimeout(() => {
-            this.speak("Hello! I'm your virtual assistant. Click the microphone to start talking.");
-        }, 1000);
-    }
-    
-    setupSpeechRecognition() {
+          this.speak("Ready when you are. Click the mic and start speaking.");
+        }, 700);
+      }
+
+      _bind(){
+        this.micBtn.addEventListener('click', () => this.toggleListening());
+        // Stop recognition when page becomes hidden (optional safeguard)
+        document.addEventListener('visibilitychange', () => {
+          if(document.hidden && this.isListening && this.recognition){
+            this.recognition.stop();
+          }
+        });
+      }
+
+      _initSpeech(){
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if(!SpeechRecognition){
+          this._appendLine('Assistant', 'Speech recognition is not supported in this browser. Try Chrome.');
+          this.statusEl.textContent = 'Unsupported';
+          return;
+        }
         this.recognition = new SpeechRecognition();
-        
         this.recognition.continuous = false;
         this.recognition.interimResults = true;
         this.recognition.lang = 'en-US';
-        
+
         this.recognition.onstart = () => {
-            this.setListeningState(true);
+          this.setListening(true);
         };
-        
         this.recognition.onresult = (event) => {
-            let finalTranscript = '';
-            let interimTranscript = '';
-            
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcript;
-                } else {
-                    interimTranscript += transcript;
-                }
+          let finalText = '';
+          let interimText = '';
+          for(let i=event.resultIndex; i<event.results.length; i++){
+            const transcript = event.results[i].transcript;
+            if(event.results[i].isFinal){
+              finalText += transcript;
+            }else{
+              interimText += transcript;
             }
-            
-            this.output.innerHTML = `
-                <strong>You said:</strong> ${finalTranscript}
-                <em>${interimTranscript}</em>
-            `;
-            
-            if (finalTranscript) {
-                this.processCommand(finalTranscript.trim().toLowerCase());
-            }
+          }
+          this._renderHeard(finalText, interimText);
+          if(finalText){
+            this._handleCommand(finalText.trim().toLowerCase());
+          }
         };
-        
+        this.recognition.onerror = (e) => {
+          this.setListening(false);
+          this._appendLine('System', `Recognition error: ${e.error}`);
+        };
         this.recognition.onend = () => {
-            this.setListeningState(false);
+          this.setListening(false);
         };
-        
-        this.recognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-            this.setListeningState(false);
-        };
-    }
-    
-    createVisualizerBars() {
-        for (let i = 0; i < 20; i++) {
-            const bar = document.createElement('div');
-            bar.className = 'visualizer-bar';
-            bar.style.animationDelay = `${i * 0.1}s`;
-            bar.style.height = `${Math.random() * 20 + 5}px`;
-            this.visualizer.appendChild(bar);
+      }
+
+      toggleListening(){
+        if(!this.recognition){
+          this._appendLine('Assistant', 'Speech recognition not available.');
+          return;
         }
-    }
-    
-    toggleListening() {
-        if (this.isListening) {
-            this.recognition.stop();
-        } else {
-            if (!this.isSpeaking) {
-                this.recognition.start();
+        if(this.isListening){
+          this.recognition.stop();
+        }else{
+          if(!this.isSpeaking){
+            try{
+              this.recognition.start();
+            }catch(e){
+              // Some browsers throw if start() called too quickly
+              this._appendLine('System', 'Try again in a moment.');
             }
+          }
         }
-    }
-    
-    setListeningState(listening) {
-        this.isListening = listening;
-        
-        if (listening) {
-            this.orb.classList.add('listening');
-            this.orb.classList.remove('speaking');
-            this.micButton.classList.add('recording');
-            this.visualizer.classList.add('active');
-            this.output.textContent = 'Listening...';
-        } else {
-            this.orb.classList.remove('listening');
-            this.micButton.classList.remove('recording');
-            this.visualizer.classList.remove('active');
+      }
+
+      // ===== UI State =====
+      setListening(state){
+        this.isListening = state;
+        if(state){
+          this.orb.classList.add('listening');
+          this.orb.classList.remove('speaking');
+          this.micBtn.classList.add('recording');
+          this.visualizer.classList.add('active');
+          this.statusEl.textContent = 'Listening...';
+        }else{
+          this.orb.classList.remove('listening');
+          this.micBtn.classList.remove('recording');
+          this.visualizer.classList.remove('active');
+          this.statusEl.textContent = 'Idle';
         }
-    }
-    
-    setSpeakingState(speaking) {
-        this.isSpeaking = speaking;
-        
-        if (speaking) {
-            this.orb.classList.add('speaking');
-            this.orb.classList.remove('listening');
-            this.animateVoiceVisualizer();
-        } else {
-            this.orb.classList.remove('speaking');
-            this.stopVoiceVisualizerAnimation();
+      }
+
+      setSpeaking(state){
+        this.isSpeaking = state;
+        if(state){
+          this.orb.classList.add('speaking');
+          this.orb.classList.remove('listening');
+          this.statusEl.textContent = 'Speaking...';
+          // drive bar motion randomly while speaking
+          this._animateBarsWhileSpeaking();
+        }else{
+          this.orb.classList.remove('speaking');
+          if(!this.isListening) this.statusEl.textContent = 'Idle';
+          // visualizer hides if not listening
+          if(!this.isListening) this.visualizer.classList.remove('active');
         }
-    }
-    
-    animateVoiceVisualizer() {
-        const bars = this.visualizer.querySelectorAll('.visualizer-bar');
-        this.visualizer.classList.add('active');
-        
-        bars.forEach((bar, index) => {
-            const animateBar = () => {
-                if (this.isSpeaking) {
-                    bar.style.height = `${Math.random() * 25 + 5}px`;
-                    setTimeout(animateBar, 100 + Math.random() * 100);
-                }
-            };
-            setTimeout(animateBar, index * 20);
-        });
-    }
-    
-    stopVoiceVisualizerAnimation() {
-        this.visualizer.classList.remove('active');
-    }
-    
-    speak(text) {
-        if (this.synthesis.speaking) {
-            this.synthesis.cancel();
+      }
+
+      // ===== Output Rendering =====
+      _appendLine(speaker, text, isInterim=false){
+        const line = document.createElement('div');
+        line.className = 'line';
+        line.innerHTML = `<span class="label">${speaker}:</span> ${isInterim ? '<span class="interim">'+text+'</span>' : text}`;
+        this.outputEl.appendChild(line);
+        this.outputEl.scrollTop = this.outputEl.scrollHeight;
+      }
+      _renderHeard(finalText, interimText){
+        // Remove existing "You said" interim if last line is interim
+        const last = this.outputEl.lastElementChild;
+        const isLastInterim = last && last.querySelector && last.querySelector('.interim');
+        if(isLastInterim) this.outputEl.removeChild(last);
+
+        if(finalText){
+          this._appendLine('You', finalText);
         }
-        
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.9;
-        utterance.pitch = 1;
-        utterance.volume = 0.8;
-        
-        utterance.onstart = () => {
-            this.setSpeakingState(true);
-        };
-        
-        utterance.onend = () => {
-            this.setSpeakingState(false);
-        };
-        
-        this.synthesis.speak(utterance);
-        this.output.innerHTML = `<strong>Assistant:</strong> ${text}`;
-    }
-    
-    processCommand(command) {
+        if(interimText){
+          // show interim lightly
+          this._appendLine('You', interimText, true);
+        }
+      }
+
+      // ===== Speak and Commands =====
+      speak(text){
+        if(!this.synth){
+          this._appendLine('Assistant', text);
+          return;
+        }
+        if(this.synth.speaking){
+          this.synth.cancel();
+        }
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 0.95;
+        u.pitch = 1.0;
+        u.volume = 1.0;
+        u.onstart = () => this.setSpeaking(true);
+        u.onend = () => this.setSpeaking(false);
+        this.synth.speak(u);
+        this._appendLine('Assistant', text);
+      }
+
+      _handleCommand(cmd){
         let response = '';
-        
-        if (command.includes('hello') || command.includes('hi')) {
-            response = 'Hello there! How can I help you today?';
-        } else if (command.includes('time')) {
-            response = `The current time is ${new Date().toLocaleTimeString()}`;
-        } else if (command.includes('date')) {
-            response = `Today's date is ${new Date().toLocaleDateString()}`;
-        } else if (command.includes('weather')) {
-            response = 'I would need access to weather data to tell you about the weather. This is a demo assistant.';
-        } else if (command.includes('joke')) {
-            const jokes = [
-                'Why don\'t scientists trust atoms? Because they make up everything!',
-                'I told my computer a joke about UDP... but I\'m not sure if it got it.',
-                'Why do programmers prefer dark mode? Because light attracts bugs!'
-            ];
-            response = jokes[Math.floor(Math.random() * jokes.length)];
+
+        if(cmd.includes('hello') || cmd.includes('hi')){
+          response = "Hello! How can I help you today?";
+        } else if(cmd.includes('time')){
+          response = `The current time is ${new Date().toLocaleTimeString()}.`;
+        } else if(cmd.includes('date')){
+          response = `Today's date is ${new Date().toLocaleDateString()}.`;
+        } else if(cmd.includes('joke')){
+          const jokes = [
+            "Why do programmers prefer dark mode? Because light attracts bugs!",
+            "I told my computer I needed a break, and it said: 'No problem, I'll go to sleep.'",
+            "Why was the developer bankrupt? Because they used up all their cache."
+          ];
+          response = jokes[Math.floor(Math.random()*jokes.length)];
+        } else if(cmd.includes('stop speaking') || cmd.includes('be quiet')){
+          if(this.synth && this.synth.speaking) this.synth.cancel();
+          response = "Okay, I'll be quiet.";
         } else {
-            response = `I heard you say: "${command}". I'm still learning, so I might not understand everything yet.`;
+          response = `You said: "${cmd}". I can tell time, date, and jokes in this demo.`;
         }
-        
-        setTimeout(() => {
-            this.speak(response);
-        }, 500);
+
+        setTimeout(() => this.speak(response), 350);
+      }
+
+      // Randomized bar motion during speaking (simple stand-in without Web Audio)
+      _animateBarsWhileSpeaking(){
+        // show visualizer during speech
+        this.visualizer.classList.add('active');
+        const bars = this.visualizer.querySelectorAll('.visualizer-bar');
+        const tick = () => {
+          if(!this.isSpeaking) return;
+          bars.forEach((bar, i) => {
+            const h = 6 + Math.random()*28;
+            bar.style.height = h + 'px';
+          });
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
     }
-}
 
-// Initialize the virtual assistant when the page loads
-window.addEventListener('DOMContentLoaded', () => {
-    new VirtualAssistant();
-});
-
-    </script>
+    // ============== Boot ==============
+    window.addEventListener('DOMContentLoaded', () => {
+      // Build visualizer bars first
+      createBars($('#visualizer'), 22);
+      // Start assistant
+      new VirtualAssistant();
+    });
+  </script>
 </body>
 </html>
+
+
+
+If you’d like, a version with true real-time mic amplitude bars using Web Audio can be embedded into this same file.
