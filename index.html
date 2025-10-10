@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Assistant</title>
+    <style>
+      /* Base Styles */
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    font-family: 'Arial', sans-serif;
+}
+
+/* Assistant Avatar - Main Orb */
+.assistant-avatar {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin-bottom: 30px;
+}
+
+.orb {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #00d4ff, #0099cc);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+    animation: breathe 3s ease-in-out infinite;
+}
+
+/* Breathing Animation (Idle State) */
+@keyframes breathe {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+}
+
+/* Listening Animation */
+.orb.listening {
+    animation: pulse 0.8s ease-in-out infinite;
+    background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+    box-shadow: 0 0 50px rgba(255, 107, 107, 0.7);
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+    }
+    70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 20px rgba(255, 107, 107, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+    }
+}
+
+/* Speaking Animation */
+.orb.speaking {
+    animation: speaking 0.5s ease-in-out infinite alternate;
+    background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    box-shadow: 0 0 40px rgba(78, 205, 196, 0.6);
+}
+
+@keyframes speaking {
+    0% {
+        transform: scale(1) rotate(0deg);
+        border-radius: 50% 40% 50% 40%;
+    }
+    100% {
+        transform: scale(1.08) rotate(2deg);
+        border-radius: 40% 50% 40% 50%;
+    }
+}
+
+/* Voice Visualizer Bars */
+.voice-visualizer {
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: flex-end;
+    height: 30px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.voice-visualizer.active {
+    opacity: 1;
+}
+
+.visualizer-bar {
+    width: 4px;
+    background: linear-gradient(to top, #00d4ff, #0099cc);
+    margin: 0 1px;
+    border-radius: 2px;
+    animation: visualize 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes visualize {
+    0% { height: 5px; }
+    100% { height: 25px; }
+}
+
+/* Microphone Button */
+.mic-button {
+    width: 80px;
+    height: 80px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.mic-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.mic-button.recording {
+    animation: recordPulse 1s ease-in-out infinite;
+    background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+}
+
+@keyframes recordPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 15px rgba(255, 107, 107, 0);
+    }
+}
+
+/* Output Area */
+.output-area {
+    width: 400px;
+    min-height: 100px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    color: white;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="assistant-avatar">
+            <div class="orb" id="mainOrb"></div>
+            <div class="voice-visualizer" id="visualizer"></div>
+        </div>
+        <button id="micButton" class="mic-button">
+            <i class="fas fa-microphone"></i>
+        </button>
+        <div id="output" class="output-area"></div>
+    </div>
+    <script>
+      class VirtualAssistant {
+    constructor() {
+        this.orb = document.getElementById('mainOrb');
+        this.micButton = document.getElementById('micButton');
+        this.output = document.getElementById('output');
+        this.visualizer = document.getElementById('visualizer');
+        
+        this.isListening = false;
+        this.isSpeaking = false;
+        
+        this.recognition = null;
+        this.synthesis = window.speechSynthesis;
+        
+        this.init();
+    }
+    
+    init() {
+        // Check for Web Speech API support
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            this.setupSpeechRecognition();
+        } else {
+            this.output.textContent = 'Speech recognition not supported in this browser.';
+            return;
+        }
+        
+        // Setup microphone button
+        this.micButton.addEventListener('click', () => this.toggleListening());
+        
+        // Create voice visualizer bars
+        this.createVisualizerBars();
+        
+        // Initial greeting
+        setTimeout(() => {
+            this.speak("Hello! I'm your virtual assistant. Click the microphone to start talking.");
+        }, 1000);
+    }
+    
+    setupSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        this.recognition = new SpeechRecognition();
+        
+        this.recognition.continuous = false;
+        this.recognition.interimResults = true;
+        this.recognition.lang = 'en-US';
+        
+        this.recognition.onstart = () => {
+            this.setListeningState(true);
+        };
+        
+        this.recognition.onresult = (event) => {
+            let finalTranscript = '';
+            let interimTranscript = '';
+            
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+            
+            this.output.innerHTML = `
+                <strong>You said:</strong> ${finalTranscript}
+                <em>${interimTranscript}</em>
+            `;
+            
+            if (finalTranscript) {
+                this.processCommand(finalTranscript.trim().toLowerCase());
+            }
+        };
+        
+        this.recognition.onend = () => {
+            this.setListeningState(false);
+        };
+        
+        this.recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            this.setListeningState(false);
+        };
+    }
+    
+    createVisualizerBars() {
+        for (let i = 0; i < 20; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'visualizer-bar';
+            bar.style.animationDelay = `${i * 0.1}s`;
+            bar.style.height = `${Math.random() * 20 + 5}px`;
+            this.visualizer.appendChild(bar);
+        }
+    }
+    
+    toggleListening() {
+        if (this.isListening) {
+            this.recognition.stop();
+        } else {
+            if (!this.isSpeaking) {
+                this.recognition.start();
+            }
+        }
+    }
+    
+    setListeningState(listening) {
+        this.isListening = listening;
+        
+        if (listening) {
+            this.orb.classList.add('listening');
+            this.orb.classList.remove('speaking');
+            this.micButton.classList.add('recording');
+            this.visualizer.classList.add('active');
+            this.output.textContent = 'Listening...';
+        } else {
+            this.orb.classList.remove('listening');
+            this.micButton.classList.remove('recording');
+            this.visualizer.classList.remove('active');
+        }
+    }
+    
+    setSpeakingState(speaking) {
+        this.isSpeaking = speaking;
+        
+        if (speaking) {
+            this.orb.classList.add('speaking');
+            this.orb.classList.remove('listening');
+            this.animateVoiceVisualizer();
+        } else {
+            this.orb.classList.remove('speaking');
+            this.stopVoiceVisualizerAnimation();
+        }
+    }
+    
+    animateVoiceVisualizer() {
+        const bars = this.visualizer.querySelectorAll('.visualizer-bar');
+        this.visualizer.classList.add('active');
+        
+        bars.forEach((bar, index) => {
+            const animateBar = () => {
+                if (this.isSpeaking) {
+                    bar.style.height = `${Math.random() * 25 + 5}px`;
+                    setTimeout(animateBar, 100 + Math.random() * 100);
+                }
+            };
+            setTimeout(animateBar, index * 20);
+        });
+    }
+    
+    stopVoiceVisualizerAnimation() {
+        this.visualizer.classList.remove('active');
+    }
+    
+    speak(text) {
+        if (this.synthesis.speaking) {
+            this.synthesis.cancel();
+        }
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+        utterance.volume = 0.8;
+        
+        utterance.onstart = () => {
+            this.setSpeakingState(true);
+        };
+        
+        utterance.onend = () => {
+            this.setSpeakingState(false);
+        };
+        
+        this.synthesis.speak(utterance);
+        this.output.innerHTML = `<strong>Assistant:</strong> ${text}`;
+    }
+    
+    processCommand(command) {
+        let response = '';
+        
+        if (command.includes('hello') || command.includes('hi')) {
+            response = 'Hello there! How can I help you today?';
+        } else if (command.includes('time')) {
+            response = `The current time is ${new Date().toLocaleTimeString()}`;
+        } else if (command.includes('date')) {
+            response = `Today's date is ${new Date().toLocaleDateString()}`;
+        } else if (command.includes('weather')) {
+            response = 'I would need access to weather data to tell you about the weather. This is a demo assistant.';
+        } else if (command.includes('joke')) {
+            const jokes = [
+                'Why don\'t scientists trust atoms? Because they make up everything!',
+                'I told my computer a joke about UDP... but I\'m not sure if it got it.',
+                'Why do programmers prefer dark mode? Because light attracts bugs!'
+            ];
+            response = jokes[Math.floor(Math.random() * jokes.length)];
+        } else {
+            response = `I heard you say: "${command}". I'm still learning, so I might not understand everything yet.`;
+        }
+        
+        setTimeout(() => {
+            this.speak(response);
+        }, 500);
+    }
+}
+
+// Initialize the virtual assistant when the page loads
+window.addEventListener('DOMContentLoaded', () => {
+    new VirtualAssistant();
+});
+
+    </script>
+</body>
+</html>
